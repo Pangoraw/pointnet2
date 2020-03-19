@@ -1,21 +1,21 @@
+import argparse
+import importlib
+import os
+import sys
 import tensorflow as tf
 import numpy as np
-import argparse
-import socket
-import importlib
-import time
-import os
-import scipy.misc
-import sys
+from matplotlib import cm
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
 sys.path.append(os.path.join(BASE_DIR, 'models'))
 sys.path.append(os.path.join(BASE_DIR, 'utils'))
 import provider
-import show3d_balls
+ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.append(os.path.join(ROOT_DIR, 'data_prep'))
-import part_dataset
-
+import part_dataset_all_normal as part_dataset
+import show3d_balls
+output_dir = os.path.join(BASE_DIR, './test_results')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
@@ -30,9 +30,15 @@ MODEL_PATH = FLAGS.model_path
 GPU_INDEX = FLAGS.gpu
 NUM_POINT = FLAGS.num_point
 MODEL = importlib.import_module(FLAGS.model) # import network module
-NUM_CLASSES = 4
+NUM_CLASSES = 50
 DATA_PATH = os.path.join(ROOT_DIR, 'data', 'shapenetcore_partanno_segmentation_benchmark_v0_normal')
-TEST_DATASET = part_dataset.PartDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, class_choice=FLAGS.category, split='test')
+TEST_DATASET = part_dataset.PartNormalDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='test')
+
+def output_color_point_cloud(data, seg, out_file, color_map):
+    with open(out_file, 'w') as f:
+        for i in range(len(seg)):
+            color = color_map(seg[i])
+            f.write('v %f %f %f %f %f %f\n' % (data[i][0], data[i][1], data[i][2], color[0], color[1], color[2]))
 
 def get_model(batch_size, num_point):
     with tf.Graph().as_default():
@@ -40,7 +46,7 @@ def get_model(batch_size, num_point):
             pointclouds_pl, labels_pl = MODEL.placeholder_inputs(batch_size, num_point)
             is_training_pl = tf.placeholder(tf.bool, shape=())
             pred, end_points = MODEL.get_model(pointclouds_pl, is_training_pl)
-            loss = MODEL.get_loss(pred, labels_pl, end_points)
+            loss = MODEL.get_loss(pred, labels_pl)#, end_points)
             saver = tf.train.Saver()
         # Create a session
         config = tf.ConfigProto()
@@ -68,18 +74,29 @@ def inference(sess, ops, pc, batch_size):
         logits[i*batch_size:(i+1)*batch_size,...] = batch_logits
     return np.argmax(logits, 2)
 
-if __name__=='__main__':
+if __name__ == '__main__':
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
 
-    import matplotlib.pyplot as plt
-    cmap = plt.cm.get_cmap("hsv", 4)
-    cmap = np.array([cmap(i) for i in range(10)])[:,:3]
+    total = 0
+    accurate = 0
+    color_map = cm.get_cmap('viridis', NUM_CLASSES)
 
+    SIZE = len(TEST_DATASET)
     for i in range(len(TEST_DATASET)):
-        ps, seg = TEST_DATASET[i]
+        print(">>>> running sample " + str(i) + "/" + str(SIZE))
+
+        ps, normal, seg = TEST_DATASET[i]
+        ps = np.hstack((ps, normal))
         sess, ops = get_model(batch_size=1, num_point=ps.shape[0])
-        segp = inference(sess, ops, np.expand_dims(ps,0), batch_size=1) 
+        segp = inference(sess, ops, np.expand_dims(ps, 0), batch_size=1)
         segp = segp.squeeze()
 
-        gt = cmap[seg, :]
-        pred = cmap[segp, :]
-        show3d_balls.showpoints(ps, gt, pred, ballradius=8)
+        total += segp.shape[0]
+        accurate += np.sum(seg == segp)
+
+        output_color_point_cloud(ps, seg, './test_results/gt_%d.obj' % (i), color_map)
+        output_color_point_cloud(ps, segp, './test_results/pred_%d.obj' % (i), color_map)
+        output_color_point_cloud(ps, segp == seg, './test_results/diff_%d.obj' % (i), lambda eq: (0,1,0) if eq else (1, 0, 0))
+
+    print("Accuracy: %f" % (float(accurate) / float(total)))
