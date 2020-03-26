@@ -1,3 +1,4 @@
+import datetime
 import argparse
 import importlib
 import os
@@ -33,6 +34,13 @@ MODEL = importlib.import_module(FLAGS.model) # import network module
 NUM_CLASSES = 50
 DATA_PATH = os.path.join(ROOT_DIR, 'data', 'shapenetcore_partanno_segmentation_benchmark_v0_normal')
 TEST_DATASET = part_dataset.PartNormalDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='test', return_cls_label=True)
+
+def print_log(msg, stream=None):
+    formatted_msg = "[%s] %s" % (str(datetime.datetime.now()), msg)
+    print(formatted_msg)
+    if stream is not None:
+        stream.write(formatted_msg)
+
 
 def output_color_point_cloud(data, seg, out_file, color_map):
     with open(out_file, 'w') as f:
@@ -85,7 +93,7 @@ if __name__ == '__main__':
     SIZE = len(TEST_DATASET)
     total_acc_iou = 0.0
     for i in range(SIZE):
-        print(">>>> running sample " + str(i) + "/" + str(SIZE))
+        print_log(">>>> running sample " + str(i) + "/" + str(SIZE))
 
         ps, normal, seg, current_cls = TEST_DATASET[i]
         ps = np.hstack((ps, normal))
@@ -97,8 +105,8 @@ if __name__ == '__main__':
         total_acc += np.mean(seg == segp)
         total_seen +=1 
 
-	mask = np.int32(seg == segp)
-         
+        mask = np.int32(seg == segp)
+
         total_iou = 0.0
 
         seg_classes = TEST_DATASET.seg_classes
@@ -122,17 +130,15 @@ if __name__ == '__main__':
         total_per_cat_iou[current_cls_name] = total_iou 
         total_acc_iou += avg_iou
         
-        print("IoU: %f" % (total_acc_iou / total_seen))
-        print("Accuracy: %f" % (total_acc / total_seen))
+        print_log("IoU: %f" % (total_acc_iou / total_seen))
+        print_log("Accuracy: %f" % (total_acc / total_seen))
 
         output_color_point_cloud(ps, seg, './test_results/gt_%d.obj' % (i), color_map)
         output_color_point_cloud(ps, segp, './test_results/pred_%d.obj' % (i), color_map)
-        output_color_point_cloud(ps, segp == seg, './test_results/diff_%d.obj' % (i), lambda eq: (0,255,0) if eq else (255, 0, 0))
+        output_color_point_cloud(ps, segp == seg, './test_results/diff_%d.obj' % (i), lambda eq: (0, 1, 0) if eq else (1, 0, 0))
+
     accuracy = total_acc / total_seen
     iou = total_acc_iou / total_seen
-    print("Accuracy: %f" % accuracy)
-    print("IoU: %f" % iou)
     with open('./test_results/metrics.txt', 'w') as f:
-        f.write("Accuracy: %f \n" % accuracy)
-        f.write("IoU: %f \n" % iou)
-
+        print_log("Accuracy: %f \n" % accuracy, stream=f)
+        print_log("IoU: %f \n" % iou, stream=f)
