@@ -90,7 +90,7 @@ if __name__ == '__main__':
     total_acc = 0
     color_map = cm.get_cmap('viridis', NUM_CLASSES)
     total_seen = 0
-    SIZE = len(TEST_DATASET)
+    SIZE = 3 # len(TEST_DATASET)
     total_acc_iou = 0.0
     for i in range(SIZE):
         print_log(">>>> running sample " + str(i) + "/" + str(SIZE))
@@ -115,7 +115,9 @@ if __name__ == '__main__':
         iou_oids = seg_classes[current_cls_name] 
         
         total_per_cat_iou = {cat:0 for cat in classes.keys()}
-                
+        total_per_cat_acc = {cat:0 for cat in classes.keys()}
+        total_per_cat_seen = {cat:0 for cat in classes.keys()}
+
         for oid in iou_oids:
             n_pred = np.sum(segp == oid)
             n_gt = np.sum(seg == oid)
@@ -125,9 +127,12 @@ if __name__ == '__main__':
                 total_iou += 1
             else:
                 total_iou += n_intersect * 1.0 / n_union
-            
+
         avg_iou = total_iou / len(iou_oids)
-        total_per_cat_iou[current_cls_name] = total_iou 
+
+        total_per_cat_iou[current_cls_name] += avg_iou 
+        total_per_cat_acc[current_cls_name] += np.mean(mask)
+	total_per_cat_seen[current_cls_name] += 1
         total_acc_iou += avg_iou
         
         print_log("IoU: %f" % (total_acc_iou / total_seen))
@@ -142,3 +147,11 @@ if __name__ == '__main__':
     with open('./test_results/metrics.txt', 'w') as f:
         print_log("Accuracy: %f \n" % accuracy, stream=f)
         print_log("IoU: %f \n" % iou, stream=f)
+	for c in total_per_cat_iou:
+		acc = 0
+		iou = 0
+		if total_per_cat_seen[c] != 0:
+			acc = total_per_cat_acc[c] / total_per_cat_seen[c]
+			iou = total_per_cat_iou[c] / total_per_cat_seen[c]
+		print_log("%s avg: %f\n" % (c, acc), stream=f)
+		print_log("%s iou: %f\n" % (c, iou), stream=f)
