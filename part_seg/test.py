@@ -90,7 +90,7 @@ if __name__ == '__main__':
     total_acc = 0
     color_map = cm.get_cmap('viridis', NUM_CLASSES)
     total_seen = 0
-    SIZE = 3 # len(TEST_DATASET)
+    SIZE = len(TEST_DATASET)
     total_acc_iou = 0.0
     for i in range(SIZE):
         print_log(">>>> running sample " + str(i) + "/" + str(SIZE))
