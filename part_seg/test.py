@@ -92,6 +92,12 @@ if __name__ == '__main__':
     total_seen = 0
     SIZE = len(TEST_DATASET)
     total_acc_iou = 0.0
+
+    classes = TEST_DATASET.classes
+    total_per_cat_iou = {cat:0 for cat in classes.keys()}
+    total_per_cat_acc = {cat:0 for cat in classes.keys()}
+    total_per_cat_seen = {cat:0 for cat in classes.keys()}
+
     for i in range(SIZE):
         print_log(">>>> running sample " + str(i) + "/" + str(SIZE))
 
@@ -110,13 +116,9 @@ if __name__ == '__main__':
         total_iou = 0.0
 
         seg_classes = TEST_DATASET.seg_classes
-        classes = TEST_DATASET.classes
         current_cls_name = list(classes)[current_cls[0]]
         iou_oids = seg_classes[current_cls_name] 
         
-        total_per_cat_iou = {cat:0 for cat in classes.keys()}
-        total_per_cat_acc = {cat:0 for cat in classes.keys()}
-        total_per_cat_seen = {cat:0 for cat in classes.keys()}
 
         for oid in iou_oids:
             n_pred = np.sum(segp == oid)
@@ -137,6 +139,9 @@ if __name__ == '__main__':
         
         print_log("IoU: %f" % (total_acc_iou / total_seen))
         print_log("Accuracy: %f" % (total_acc / total_seen))
+	print_log("Current class: %s" % (current_cls_name))
+	print_log("Current class avg: %f" % (total_per_cat_acc[current_cls_name] / total_per_cat_seen[current_cls_name]))
+	print_log("Current class iou: %f" % (total_per_cat_iou[current_cls_name] / total_per_cat_seen[current_cls_name]))
 
         output_color_point_cloud(ps, seg, './test_results/gt_%d.obj' % (i), color_map)
         output_color_point_cloud(ps, segp, './test_results/pred_%d.obj' % (i), color_map)
