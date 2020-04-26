@@ -4,6 +4,7 @@ from datetime import datetime
 import h5py
 import numpy as np
 import tensorflow as tf
+from tensorflow.python import debug as tf_debug
 import socket
 import importlib
 import os
@@ -67,7 +68,11 @@ DATA_PATH = os.path.join(ROOT_DIR, 'data', 'hdf5_data')
 TRAIN_DATASET = face_dataset.FaceDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='train')
 TEST_DATASET = face_dataset.FaceDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='val')
 
-NUM_CLASSES = TRAIN_DATASET.seg_classes.shape[0]
+NUM_CLASSES = TRAIN_DATASET.n_classes
+
+def has_shape_six(datum, tensor):
+    shape = np.shape(tensor)
+    return len(shape) == 3
 
 def log_string(out_str):
     LOG_FOUT.write(out_str+'\n')
@@ -135,6 +140,8 @@ def train():
         config.allow_soft_placement = True
         config.log_device_placement = False
         sess = tf.Session(config=config)
+	# sess = tf_debug.LocalCLIDebugWrapperSession(sess)
+	#sess.add_tensor_filter("has_shape_six", has_shape_six)
 
         # Add summary writers
         merged = tf.summary.merge_all()
@@ -170,12 +177,13 @@ def train():
 
 def get_batch(dataset, idxs, start_idx, end_idx):
     bsize = end_idx-start_idx
-    batch_data = np.zeros((bsize, NUM_POINT, 6))
+    batch_data = np.zeros((bsize, NUM_POINT, 3))
     batch_label = np.zeros((bsize, NUM_POINT), dtype=np.int32)
     for i in range(bsize):
-        ps,normal,seg = dataset[idxs[i+start_idx]]
+        # ps,normal,seg = dataset[idxs[i+start_idx]]
+        ps,seg = dataset[idxs[i+start_idx]]
         batch_data[i,:,0:3] = ps
-        batch_data[i,:,3:6] = normal
+        # batch_data[i,:,3:6] = normal
         batch_label[i,:] = seg
     return batch_data, batch_label
 
@@ -200,7 +208,7 @@ def train_one_epoch(sess, ops, train_writer):
         # Augment batched point clouds by rotation and jittering
         #aug_data = batch_data
         #aug_data = provider.random_scale_point_cloud(batch_data)
-        batch_data[:,:,0:3] = provider.jitter_point_cloud(batch_data[:,:,0:3])
+        batch_data = provider.jitter_point_cloud(batch_data)
         feed_dict = {ops['pointclouds_pl']: batch_data,
                      ops['labels_pl']: batch_label,
                      ops['is_training_pl']: is_training,}

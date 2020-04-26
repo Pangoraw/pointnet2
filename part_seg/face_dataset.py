@@ -10,7 +10,7 @@ import numpy as np
 
 class FaceDataset():
     def get_data_file(self):
-        file = f"{self.split}_hdf5_file_list.txt"
+        file = os.path.join(self.root, "{}_hdf5_file_list.txt".format(self.split))
         with open(file, "r") as f:
             files = [ls.rstrip() for ls in f]
         return files
@@ -32,25 +32,27 @@ class FaceDataset():
         self.cat = {k: v for k, v in self.cat.items()}
 
         data_files = self.get_data_file()
-        samples = np.array([], dtype='float32')
-        labels = np.array([], dtype='uint8')
-        segs = np.array([], dtype='uint8')
-        for file in data_files:
-            store = h5py.File(file, 'r')
-            samples = np.concatenate(samples, store['data'])
-            labels = np.concatenate(labels, store['label'])
-            segs = np.concatenate(segs, store['pid'])
+	file_path = os.path.join(self.root, data_files[0])
+        store = h5py.File(file_path, 'r')
+        samples = store['data'].value
+        labels = store['label'].value
+        segs = store['pid'].value
 
         self.samples = samples
         self.labels = labels
         self.segs = segs
-        self.seg_classes = np.unique(segs.reshape(-1,))
+	classes = np.unique(segs.reshape(-1,))
+        self.seg_classes = {0: classes}
+	self.n_classes = classes.shape[0]
+	self.classes = {0: 'face'}
 
 
     def __getitem__(self, index):
         if self.classification:
             return self.samples[index], self.labels[index]
-        else:
+        elif self.return_cls_label:
+            return self.samples[index], self.segs[index], self.labels[index]
+	else:
             return self.samples[index], self.segs[index]
 
 

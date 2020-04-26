@@ -7,8 +7,10 @@ import tensorflow as tf
 import numpy as np
 from matplotlib import cm
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 sys.path.append(BASE_DIR)
+print(BASE_DIR)
+
 sys.path.append(os.path.join(BASE_DIR, 'models'))
 sys.path.append(os.path.join(BASE_DIR, 'utils'))
 import provider
@@ -17,7 +19,7 @@ ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.append(os.path.join(ROOT_DIR, 'data_prep'))
 import part_dataset_all_normal as part_dataset
 import show3d_balls
-from .face_dataset import FaceDataset
+from face_dataset import FaceDataset
 
 output_dir = os.path.join(BASE_DIR, './test_results')
 
@@ -39,10 +41,10 @@ MODEL = importlib.import_module(FLAGS.model)  # import network module
 # TEST_DATASET = part_dataset.PartNormalDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='test',
 #                                               return_cls_label=True)
 
-DATA_PATH = os.path.join(ROOT_DIR, 'data', 'hdf5_data')
-TEST_DATASET = FaceDataset(DATA_PATH, split='test')
+DATA_PATH = os.path.join(BASE_DIR, 'data', 'hdf5_data')
+TEST_DATASET = FaceDataset(DATA_PATH, split='test', return_cls_label=True)
 
-NUM_CLASSES = len(TEST_DATASET.seg_classes.keys())
+NUM_CLASSES = 5
 
 
 def print_log(msg, stream=None):
@@ -114,8 +116,9 @@ if __name__ == '__main__':
     for i in range(SIZE):
         print_log(">>>> running sample " + str(i) + "/" + str(SIZE))
 
-        ps, normal, seg, current_cls = TEST_DATASET[i]
-        ps = np.hstack((ps, normal))
+        ps, seg, current_cls = TEST_DATASET[i]
+	current_cls = [current_cls]
+        # ps = np.hstack((ps, normal))
         sess, ops = get_model(batch_size=1, num_point=ps.shape[0])
         segp = inference(sess, ops, np.expand_dims(ps, 0), batch_size=1)
         segp = segp.squeeze()

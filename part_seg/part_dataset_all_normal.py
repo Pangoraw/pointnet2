@@ -17,7 +17,7 @@ def pc_normalize(pc):
     return pc
 
 class PartNormalDataset():
-    def __init__(self, root, npoints = 2500, classification = False, split='train', normalize=True, return_cls_label = False):
+    def __init__(self, root, npoints = 2500, classification = False, split='train', normalize=True, class_choice=None, return_cls_label = False):
         self.npoints = npoints
         self.root = root
         self.catfile = os.path.join(self.root, 'synsetoffset2category.txt')
@@ -33,7 +33,9 @@ class PartNormalDataset():
                 self.cat[ls[0]] = ls[1]
         self.cat = {k:v for k,v in self.cat.items()}
         #print(self.cat)
-            
+        if not class_choice is None:
+            self.cat = {k:v for k,v in self.cat.items() if k in class_choice}
+
         self.meta = {}
         with open(os.path.join(self.root, 'train_test_split', 'shuffled_train_file_list.json'), 'r') as f:
             train_ids = set([str(d.split('/')[2]) for d in json.load(f)])
@@ -128,8 +130,8 @@ if __name__ == '__main__':
     print normal
     
     sys.path.append('../utils')
-    import show3d_balls
-    show3d_balls.showpoints(ps, normal+1, ballradius=8)
+    # import show3d_balls
+    # show3d_balls.showpoints(ps, normal+1, ballradius=8)
 
     d = PartNormalDataset(root = '../data/shapenetcore_partanno_segmentation_benchmark_v0_normal', classification = True)
     print(len(d))
