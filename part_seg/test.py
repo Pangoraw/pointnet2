@@ -6,6 +6,8 @@ import sys
 import tensorflow as tf
 import numpy as np
 from matplotlib import cm
+from sklearn.metrics import confusion_matrix
+import h5py
 
 BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 sys.path.append(BASE_DIR)
@@ -113,11 +115,13 @@ if __name__ == '__main__':
     total_per_cat_acc = {cat: 0 for cat in classes.keys()}
     total_per_cat_seen = {cat: 0 for cat in classes.keys()}
 
+    confusion = np.zeros((5, 5), dtype='uint32')
+
     for i in range(SIZE):
         print_log(">>>> running sample " + str(i) + "/" + str(SIZE))
 
         ps, seg, current_cls = TEST_DATASET[i]
-	current_cls = [current_cls]
+        current_cls = [current_cls]
         # ps = np.hstack((ps, normal))
         sess, ops = get_model(batch_size=1, num_point=ps.shape[0])
         segp = inference(sess, ops, np.expand_dims(ps, 0), batch_size=1)
@@ -128,6 +132,7 @@ if __name__ == '__main__':
         total_seen += 1
 
         mask = np.int32(seg == segp)
+        confusion = confusion + confusion_matrix(seg, segp, labels=[0, 1, 2, 3, 4, 5])
 
         total_iou = 0.0
 
@@ -178,3 +183,8 @@ if __name__ == '__main__':
                 iou = total_per_cat_iou[c] / total_per_cat_seen[c]
             print_log("%s avg: %f\n" % (c, acc), stream=f)
             print_log("%s iou: %f\n" % (c, iou), stream=f)
+    with h5py.File('./test_results/confusion_matrix.h5', 'w') as store:
+        store.create_dataset(
+            'confusion', data=confusion,
+            dtype='uint32', compression='gzip', compression_opts=4
+        )
