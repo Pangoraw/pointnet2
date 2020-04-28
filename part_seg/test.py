@@ -23,7 +23,7 @@ import part_dataset_all_normal as part_dataset
 import show3d_balls
 from face_dataset import FaceDataset
 
-output_dir = os.path.join(BASE_DIR, './test_results')
+output_dir = './test_results'
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
