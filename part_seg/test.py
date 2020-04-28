@@ -23,7 +23,7 @@ import part_dataset_all_normal as part_dataset
 import show3d_balls
 from face_dataset import FaceDataset
 
-output_dir = os.path.join(BASE_DIR, './test_results')
+output_dir = './test_results'
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
@@ -132,7 +132,7 @@ if __name__ == '__main__':
         total_seen += 1
 
         mask = np.int32(seg == segp)
-        confusion = confusion + confusion_matrix(seg, segp, labels=[0, 1, 2, 3, 4, 5])
+        confusion = confusion + confusion_matrix(seg, segp, labels=[0, 1, 2, 3, 4])
 
         total_iou = 0.0
 
