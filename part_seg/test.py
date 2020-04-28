@@ -44,7 +44,7 @@ MODEL = importlib.import_module(FLAGS.model)  # import network module
 #                                               return_cls_label=True)
 
 DATA_PATH = os.path.join(BASE_DIR, 'data', 'hdf5_data')
-TEST_DATASET = FaceDataset(DATA_PATH, split='test', return_cls_label=True)
+TEST_DATASET = FaceDataset(DATA_PATH, split='test', return_cls_label=True, return_normals=True)
 
 NUM_CLASSES = 5
 
@@ -120,9 +120,9 @@ if __name__ == '__main__':
     for i in range(SIZE):
         print_log(">>>> running sample " + str(i) + "/" + str(SIZE))
 
-        ps, seg, current_cls = TEST_DATASET[i]
+        ps, normals, seg, current_cls = TEST_DATASET[i]
         current_cls = [current_cls]
-        # ps = np.hstack((ps, normal))
+        ps = np.hstack((ps, normals))
         sess, ops = get_model(batch_size=1, num_point=ps.shape[0])
         segp = inference(sess, ops, np.expand_dims(ps, 0), batch_size=1)
         segp = segp.squeeze()

@@ -69,15 +69,10 @@ HOSTNAME = socket.gethostname()
 # TRAIN_DATASET = part_dataset_all_normal.PartNormalDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='trainval')
 # TEST_DATASET = part_dataset_all_normal.PartNormalDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='test')
 DATA_PATH = os.path.join(ROOT_DIR, 'data', 'hdf5_data')
-TRAIN_DATASET = face_dataset.FaceDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='train')
-TEST_DATASET = face_dataset.FaceDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='val')
+TRAIN_DATASET = face_dataset.FaceDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='train', return_normals=True)
+TEST_DATASET = face_dataset.FaceDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='val', return_normals=True)
 
 NUM_CLASSES = TRAIN_DATASET.n_classes
-
-
-def has_shape_six(datum, tensor):
-    shape = np.shape(tensor)
-    return len(shape) == 3
 
 
 def log_string(out_str):
@@ -187,13 +182,12 @@ def train():
 
 def get_batch(dataset, idxs, start_idx, end_idx):
     bsize = end_idx - start_idx
-    batch_data = np.zeros((bsize, NUM_POINT, 3))
+    batch_data = np.zeros((bsize, NUM_POINT, 6))
     batch_label = np.zeros((bsize, NUM_POINT), dtype=np.int32)
     for i in range(bsize):
-        # ps,normal,seg = dataset[idxs[i+start_idx]]
-        ps, seg = dataset[idxs[i + start_idx]]
+        ps, normal, seg = dataset[idxs[i + start_idx]]
         batch_data[i, :, 0:3] = ps
-        # batch_data[i,:,3:6] = normal
+        batch_data[i, :, 3:6] = normal
         batch_label[i, :] = seg
     return batch_data, batch_label
 
@@ -220,7 +214,7 @@ def train_one_epoch(sess, ops, train_writer):
         # aug_data = batch_data
         # aug_data = provider.random_scale_point_cloud(batch_data)
         if not DISABLE_JITTERING:
-            batch_data = provider.jitter_point_cloud(batch_data)
+            batch_data[:, :, 0:3] = provider.jitter_point_cloud(batch_data[:, :, 0:3])
         feed_dict = {ops['pointclouds_pl']: batch_data,
                      ops['labels_pl']: batch_label,
                      ops['is_training_pl']: is_training, }
@@ -267,7 +261,7 @@ def eval_one_epoch(sess, ops, test_writer):
     log_string(str(datetime.now()))
     log_string('---- EPOCH %03d EVALUATION ----' % (EPOCH_CNT))
 
-    batch_data = np.zeros((BATCH_SIZE, NUM_POINT, 3))
+    batch_data = np.zeros((BATCH_SIZE, NUM_POINT, 6))
     batch_label = np.zeros((BATCH_SIZE, NUM_POINT)).astype(np.int32)
     for batch_idx in range(num_batches):
         if batch_idx % 20 == 0:
