@@ -132,7 +132,7 @@ if __name__ == '__main__':
         total_seen += 1
 
         mask = np.int32(seg == segp)
-        confusion = confusion + confusion_matrix(seg, segp, labels=[0, 1, 2, 3, 4, 5])
+        confusion = confusion + confusion_matrix(seg, segp, labels=[0, 1, 2, 3, 4])
 
         total_iou = 0.0
 
@@ -172,7 +172,7 @@ if __name__ == '__main__':
 
     accuracy = total_acc / total_seen
     iou = total_acc_iou / total_seen
-    with open('./test_results/metrics.txt', 'w') as f:
+    with open('./{}/metrics.txt'.format(output_dir), 'w') as f:
         print_log("Accuracy: %f \n" % accuracy, stream=f)
         print_log("IoU: %f \n" % iou, stream=f)
         for c in total_per_cat_iou:
@@ -183,7 +183,7 @@ if __name__ == '__main__':
                 iou = total_per_cat_iou[c] / total_per_cat_seen[c]
             print_log("%s avg: %f\n" % (c, acc), stream=f)
             print_log("%s iou: %f\n" % (c, iou), stream=f)
-    with h5py.File('./test_results/confusion_matrix.h5', 'w') as store:
+    with h5py.File('./{}/confusion_matrix.h5'.format(output_dir), 'w') as store:
         store.create_dataset(
             'confusion', data=confusion,
             dtype='uint32', compression='gzip', compression_opts=4
