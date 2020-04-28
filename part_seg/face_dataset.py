@@ -32,7 +32,7 @@ class FaceDataset():
         self.cat = {k: v for k, v in self.cat.items()}
 
         data_files = self.get_data_file()
-	file_path = os.path.join(self.root, data_files[0])
+        file_path = os.path.join(self.root, data_files[0])
         store = h5py.File(file_path, 'r')
         samples = store['data'].value
         labels = store['label'].value
@@ -41,20 +41,18 @@ class FaceDataset():
         self.samples = samples
         self.labels = labels
         self.segs = segs
-	classes = np.unique(segs.reshape(-1,))
+        classes = np.unique(segs.reshape(-1, ))
         self.seg_classes = {0: classes}
-	self.n_classes = classes.shape[0]
-	self.classes = {0: 'face'}
-
+        self.n_classes = classes.shape[0]
+        self.classes = {0: 'face'}
 
     def __getitem__(self, index):
         if self.classification:
             return self.samples[index], self.labels[index]
         elif self.return_cls_label:
             return self.samples[index], self.segs[index], self.labels[index]
-	else:
+        else:
             return self.samples[index], self.segs[index]
-
 
     def __len__(self):
         return self.samples.shape[0]
