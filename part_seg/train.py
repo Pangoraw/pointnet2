@@ -9,6 +9,8 @@ import socket
 import importlib
 import os
 import sys
+from tqdm import tqdm
+import time
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
@@ -33,6 +35,9 @@ parser.add_argument('--decay_step', type=int, default=200000, help='Decay step f
 parser.add_argument('--decay_rate', type=float, default=0.7, help='Decay rate for lr decay [default: 0.7]')
 parser.add_argument('--disable_jittering', type=bool, default=False,
                     help='Whether or not to disable jittering [default: false]')
+parser.add_argument('--param_to_test', type=str, default='max_epoch', help='Hyperparameter to test [default: max_epoch]')
+parser.add_argument('--cross_validation', type=bool, default=False, help='Wether or not to perform cross validation [default: False]')
+
 FLAGS = parser.parse_args()
 
 EPOCH_CNT = 0
@@ -47,6 +52,8 @@ OPTIMIZER = FLAGS.optimizer
 DECAY_STEP = FLAGS.decay_step
 DECAY_RATE = FLAGS.decay_rate
 DISABLE_JITTERING = FLAGS.disable_jittering
+PARAM_TO_TEST = FLAGS.param_to_test
+CROSS_VALIDATION = FLAGS.cross_validation
 
 MODEL = importlib.import_module(FLAGS.model)  # import network module
 MODEL_FILE = os.path.join(ROOT_DIR, 'models', FLAGS.model + '.py')
@@ -54,8 +61,9 @@ LOG_DIR = FLAGS.log_dir
 if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
 os.system('cp %s %s' % (MODEL_FILE, LOG_DIR))  # bkp of model def
 os.system('cp train.py %s' % (LOG_DIR))  # bkp of train procedure
-LOG_FOUT = open(os.path.join(LOG_DIR, 'log_train.txt'), 'w')
+LOG_FOUT = open(os.path.join(LOG_DIR, f'log_train_{PARAM_TO_TEST}.txt'), 'w')
 LOG_FOUT.write(str(FLAGS) + '\n')
+PARAM_TO_TEST = PARAM_TO_TEST.upper()
 
 BN_INIT_DECAY = 0.5
 BN_DECAY_DECAY_RATE = 0.5
@@ -74,6 +82,13 @@ TEST_DATASET = face_dataset.FaceDataset(root=DATA_PATH, npoints=NUM_POINT, class
 
 NUM_CLASSES = TRAIN_DATASET.n_classes
 
+def get_execution_time(start):
+    part = time.time()
+    hours, rem = divmod(part-start, 3600)
+    minutes, seconds = divmod(rem, 60)
+    duration = '{:0>2}:{:0>2}:{:05.2f}\n'.format(int(hours),int(minutes),seconds)
+    print(duration)
+    return duration
 
 def has_shape_six(datum, tensor):
     shape = np.shape(tensor)
@@ -177,13 +192,13 @@ def train():
             sys.stdout.flush()
 
             train_one_epoch(sess, ops, train_writer)
-            eval_one_epoch(sess, ops, test_writer)
+            acc, iou, class_acc = eval_one_epoch(sess, ops, test_writer)
 
             # Save the variables to disk.
             if epoch % 10 == 0:
                 save_path = saver.save(sess, os.path.join(LOG_DIR, "model.ckpt"))
                 log_string("Model saved in file: %s" % save_path)
-
+    return acc, iou, class_acc
 
 def get_batch(dataset, idxs, start_idx, end_idx):
     bsize = end_idx - start_idx
@@ -339,10 +354,59 @@ def eval_one_epoch(sess, ops, test_writer):
     log_string('eval mean mIoU (all shapes): %f' % (np.mean(all_shape_ious)))
 
     EPOCH_CNT += 1
-    return total_correct / float(total_seen)
+    return total_correct / float(total_seen), mean_shape_ious, np.mean(np.array(total_correct_class) / np.array(total_seen_class, dtype=np.float))
 
 
 if __name__ == "__main__":
     log_string('pid: %s' % (str(os.getpid())))
-    train()
+    
+    DATA_PATH = os.path.join(ROOT_DIR, 'data', 'hdf5_data')
+    
+
+    hyperparameters = {'BATCH_SIZE': [32, 60, 15],
+                       'NUM_POINT': [2048, 6000, 12000], 
+                       'MAX_EPOCH': [101, 201, 301], 
+                       'BASE_LEARNING_RATE': [0.0001, 0.001, 0.01], 
+                       'MOMENTUM': [0.3, 0.9, 1.8], 
+                       'OPTIMIZER': ['adam', 'momentum'], 
+                       'DECAY_STEP': [100000, 200000], 
+                       'DECAY_RATE': [0.7, 1.4], 
+                       'DISABLE_JITTERING': [False, True]}
+    
+    log_string(f'>>Testing{PARAM_TO_TEST} with the values: {hyperparameters[PARAM_TO_TEST]}')
+
+    for param in tqdm(hyperparameters[PARAM_TO_TEST]):
+        start = time.time()
+        print(f'>>Testing{PARAM_TO_TEST}: {param}')
+        #Change value of the hyperparameter to be tested
+        exec(f'{PARAM_TO_TEST} = param')
+        
+        if CROSS_VALIDATION:
+            print('Performing cross validation')
+            acc_avg = []
+            iou_avg = []
+            class_acc_avg = []
+            for i in tqdm(range(4)):
+                TRAIN_DATASET = face_dataset.FaceDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='train', return_normals=True, file_index=i)
+                TEST_DATASET = face_dataset.FaceDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='val', return_normals=True, file_index=i)
+
+                NUM_CLASSES = TRAIN_DATASET.n_classes
+
+                acc, iou, class_acc = train()
+                acc_avg.append(acc)
+                iou_avg.append(iou)
+                class_acc_avg.append(class_acc)
+                log_string(f'{PARAM_TO_TEST}: {param}')
+                log_string(f'acc: {np.mean(acc_avg)}')
+                log_string(f'class acc: {np.mean(class_acc_avg)}')
+                log_string(f'iou: {np.mean(iou_avg)}')
+        else:
+            acc, iou, class_acc = train()
+            log_string(f'{PARAM_TO_TEST}: {param}')
+            log_string(f'acc: {acc}')
+            log_string(f'class acc: {class_acc}')
+            log_string(f'iou: {iou}')
+
+        log_string(f'Execution duration: {get_execution_time(start)}') 
+
     LOG_FOUT.close()

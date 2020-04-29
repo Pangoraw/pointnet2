@@ -15,7 +15,7 @@ class FaceDataset():
             files = [ls.rstrip() for ls in f]
         return files
 
-    def __init__(self, root, npoints=2048, classification=False, split='train', normalize=True, return_cls_label=False):
+    def __init__(self, root, npoints=2048, classification=False, split='train', normalize=True, return_cls_label=False, return_normals=False, file_index=0):
         self.npoints = npoints
         self.root = root
         self.split = split
@@ -32,7 +32,7 @@ class FaceDataset():
         self.cat = {k: v for k, v in self.cat.items()}
 
         data_files = self.get_data_file()
-	file_path = os.path.join(self.root, data_files[0])
+        file_path = os.path.join(self.root, data_files[file_index])
         store = h5py.File(file_path, 'r')
         samples = store['data'].value
         labels = store['label'].value
