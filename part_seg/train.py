@@ -61,7 +61,7 @@ LOG_DIR = FLAGS.log_dir
 if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
 os.system('cp %s %s' % (MODEL_FILE, LOG_DIR))  # bkp of model def
 os.system('cp train.py %s' % (LOG_DIR))  # bkp of train procedure
-LOG_FOUT = open(os.path.join(LOG_DIR, f'log_train_{PARAM_TO_TEST}.txt'), 'w')
+LOG_FOUT = open(os.path.join(LOG_DIR, 'log_train_{}.txt'.format(PARAM_TO_TEST)), 'w')
 LOG_FOUT.write(str(FLAGS) + '\n')
 PARAM_TO_TEST = PARAM_TO_TEST.upper()
 
@@ -373,13 +373,13 @@ if __name__ == "__main__":
                        'DECAY_RATE': [0.7, 1.4], 
                        'DISABLE_JITTERING': [False, True]}
     
-    log_string(f'>>Testing{PARAM_TO_TEST} with the values: {hyperparameters[PARAM_TO_TEST]}')
+    log_string('>>Testing{} with the values: {}'.format(PARAM_TO_TEST, hyperparameters[PARAM_TO_TEST]))
 
     for param in tqdm(hyperparameters[PARAM_TO_TEST]):
         start = time.time()
-        print(f'>>Testing{PARAM_TO_TEST}: {param}')
+        print('>>Testing{}: {}'.format(PARAM_TO_TEST, param))
         #Change value of the hyperparameter to be tested
-        exec(f'{PARAM_TO_TEST} = param')
+        exec('{} = param'.format(PARAM_TO_TEST))
         
         if CROSS_VALIDATION:
             print('Performing cross validation')
@@ -396,17 +396,17 @@ if __name__ == "__main__":
                 acc_avg.append(acc)
                 iou_avg.append(iou)
                 class_acc_avg.append(class_acc)
-                log_string(f'{PARAM_TO_TEST}: {param}')
-                log_string(f'acc: {np.mean(acc_avg)}')
-                log_string(f'class acc: {np.mean(class_acc_avg)}')
-                log_string(f'iou: {np.mean(iou_avg)}')
+                log_string('{}: {}'.format(PARAM_TO_TEST, param))
+                log_string('acc: {}'.format(np.mean(acc_avg)))
+                log_string('class acc: {}'.format(np.mean(class_acc_avg)))
+                log_string('iou: {}'.format(np.mean(iou_avg)))
         else:
             acc, iou, class_acc = train()
-            log_string(f'{PARAM_TO_TEST}: {param}')
-            log_string(f'acc: {acc}')
-            log_string(f'class acc: {class_acc}')
-            log_string(f'iou: {iou}')
+            log_string('{}: {}'.format(PARAM_TO_TEST, param))
+            log_string('acc: {}'.format(acc))
+            log_string('class acc: {}'.format(class_acc))
+            log_string('iou: {}'.format(iou))
 
-        log_string(f'Execution duration: {get_execution_time(start)}') 
+        log_string('Execution duration: {}'.format(get_execution_time(start))) 
 
     LOG_FOUT.close()
