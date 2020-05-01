@@ -61,8 +61,11 @@ LOG_DIR = FLAGS.log_dir
 if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
 os.system('cp %s %s' % (MODEL_FILE, LOG_DIR))  # bkp of model def
 os.system('cp train.py %s' % (LOG_DIR))  # bkp of train procedure
-LOG_FOUT = open(os.path.join(LOG_DIR, 'log_train_{}.txt'.format(PARAM_TO_TEST)), 'w')
+LOG_FOUT = open(os.path.join(LOG_DIR, 'log_train.txt'), 'w')
 LOG_FOUT.write(str(FLAGS) + '\n')
+LOG_FOUT_CROSS = open(os.path.join(LOG_DIR, 'log_train_{}.txt'.format(PARAM_TO_TEST)), 'w')
+LOG_FOUT_CROSS.write(str(FLAGS) + '\n')
+
 PARAM_TO_TEST = PARAM_TO_TEST.upper()
 
 BN_INIT_DECAY = 0.5
@@ -95,9 +98,9 @@ def has_shape_six(datum, tensor):
     return len(shape) == 3
 
 
-def log_string(out_str):
-    LOG_FOUT.write(out_str + '\n')
-    LOG_FOUT.flush()
+def log_string(out_str, file=LOG_FOUT):
+    file.write(out_str + '\n')
+    file.flush()
     print(out_str)
 
 
@@ -360,33 +363,35 @@ def eval_one_epoch(sess, ops, test_writer):
 if __name__ == "__main__":
     log_string('pid: %s' % (str(os.getpid())))
     
-    DATA_PATH = os.path.join(ROOT_DIR, 'data', 'hdf5_data')
+    DATA_PATH = os.path.join(ROOT_DIR, 'data', 'DownSampledDatasetCrossVal')
     
 
     hyperparameters = {'BATCH_SIZE': [32, 60, 15],
                        'NUM_POINT': [2048, 6000, 12000], 
                        'MAX_EPOCH': [101, 201, 301], 
-                       'BASE_LEARNING_RATE': [0.0001, 0.001, 0.01], 
+    	               'BASE_LEARNING_RATE': [0.0001, 0.001, 0.01], 
                        'MOMENTUM': [0.3, 0.9, 1.8], 
                        'OPTIMIZER': ['adam', 'momentum'], 
                        'DECAY_STEP': [100000, 200000], 
                        'DECAY_RATE': [0.7, 1.4], 
                        'DISABLE_JITTERING': [False, True]}
     
-    log_string('>>Testing{} with the values: {}'.format(PARAM_TO_TEST, hyperparameters[PARAM_TO_TEST]))
+    log_string('>>Testing {} with values: {}'.format(PARAM_TO_TEST, hyperparameters[PARAM_TO_TEST]), LOG_FOUT_CROSS)
 
     for param in tqdm(hyperparameters[PARAM_TO_TEST]):
         start = time.time()
-        print('>>Testing{}: {}'.format(PARAM_TO_TEST, param))
+        log_string('>>Testing {}: {}'.format(PARAM_TO_TEST, param), LOG_FOUT_CROSS)
         #Change value of the hyperparameter to be tested
         exec('{} = param'.format(PARAM_TO_TEST))
         
         if CROSS_VALIDATION:
-            print('Performing cross validation')
+            print('>>Performing cross validation')
             acc_avg = []
             iou_avg = []
             class_acc_avg = []
             for i in tqdm(range(4)):
+                print('>>Iteration: {}'.format(i+1))
+                EPOCH_CNT = 0
                 TRAIN_DATASET = face_dataset.FaceDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='train', return_normals=True, file_index=i)
                 TEST_DATASET = face_dataset.FaceDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='val', return_normals=True, file_index=i)
 
@@ -396,17 +401,15 @@ if __name__ == "__main__":
                 acc_avg.append(acc)
                 iou_avg.append(iou)
                 class_acc_avg.append(class_acc)
-                log_string('{}: {}'.format(PARAM_TO_TEST, param))
-                log_string('acc: {}'.format(np.mean(acc_avg)))
-                log_string('class acc: {}'.format(np.mean(class_acc_avg)))
-                log_string('iou: {}'.format(np.mean(iou_avg)))
+            log_string('acc: {}: {}'.format(np.mean(acc_avg), str(acc_avg)), LOG_FOUT_CROSS)
+            log_string('class acc: {}: {}'.format(np.mean(class_acc_avg), str(class_acc_avg)), LOG_FOUT_CROSS)
+            log_string('iou: {}: {}'.format(np.mean(iou_avg), str(iou_avg)), LOG_FOUT_CROSS)
         else:
             acc, iou, class_acc = train()
-            log_string('{}: {}'.format(PARAM_TO_TEST, param))
-            log_string('acc: {}'.format(acc))
-            log_string('class acc: {}'.format(class_acc))
-            log_string('iou: {}'.format(iou))
+            log_string('acc: {}'.format(acc), LOG_FOUT_CROSS)
+            log_string('class acc: {}'.format(class_acc), LOG_FOUT_CROSS)
+            log_string('iou: {}'.format(iou), LOG_FOUT_CROSS)
 
-        log_string('Execution duration: {}'.format(get_execution_time(start))) 
+        log_string('Execution duration: {}'.format(get_execution_time(start)), LOG_FOUT_CROSS) 
 
     LOG_FOUT.close()

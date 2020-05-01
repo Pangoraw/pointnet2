@@ -41,10 +41,10 @@ class FaceDataset():
         self.samples = samples
         self.labels = labels
         self.segs = segs
-	classes = np.unique(segs.reshape(-1,))
+        classes = np.unique(segs.reshape(-1,))
         self.seg_classes = {0: classes}
-	self.n_classes = classes.shape[0]
-	self.classes = {0: 'face'}
+        self.n_classes = classes.shape[0]
+        self.classes = {0: 'face'}
 
 
     def __getitem__(self, index):
