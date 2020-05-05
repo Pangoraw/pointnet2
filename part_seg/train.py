@@ -1,3 +1,6 @@
+import face_dataset
+import tf_util
+import provider
 import argparse
 import math
 from datetime import datetime
@@ -17,26 +20,35 @@ ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.append(BASE_DIR)
 sys.path.append(os.path.join(ROOT_DIR, 'models'))
 sys.path.append(os.path.join(ROOT_DIR, 'utils'))
-import provider
-import tf_util
-import face_dataset
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
-parser.add_argument('--model', default='pointnet2_part_seg', help='Model name [default: pointnet2_part_seg]')
+parser.add_argument('--gpu', type=int, default=0,
+                    help='GPU to use [default: GPU 0]')
+parser.add_argument('--model', default='pointnet2_part_seg',
+                    help='Model name [default: pointnet2_part_seg]')
 parser.add_argument('--log_dir', default='log', help='Log dir [default: log]')
-parser.add_argument('--num_point', type=int, default=2048, help='Point Number [default: 2048]')
-parser.add_argument('--max_epoch', type=int, default=201, help='Epoch to run [default: 201]')
-parser.add_argument('--batch_size', type=int, default=32, help='Batch Size during training [default: 32]')
-parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate [default: 0.001]')
-parser.add_argument('--momentum', type=float, default=0.9, help='Initial learning rate [default: 0.9]')
-parser.add_argument('--optimizer', default='adam', help='adam or momentum [default: adam]')
-parser.add_argument('--decay_step', type=int, default=200000, help='Decay step for lr decay [default: 200000]')
-parser.add_argument('--decay_rate', type=float, default=0.7, help='Decay rate for lr decay [default: 0.7]')
+parser.add_argument('--num_point', type=int, default=2048,
+                    help='Point Number [default: 2048]')
+parser.add_argument('--max_epoch', type=int, default=201,
+                    help='Epoch to run [default: 201]')
+parser.add_argument('--batch_size', type=int, default=32,
+                    help='Batch Size during training [default: 32]')
+parser.add_argument('--learning_rate', type=float, default=0.001,
+                    help='Initial learning rate [default: 0.001]')
+parser.add_argument('--momentum', type=float, default=0.9,
+                    help='Initial learning rate [default: 0.9]')
+parser.add_argument('--optimizer', default='adam',
+                    help='adam or momentum [default: adam]')
+parser.add_argument('--decay_step', type=int, default=200000,
+                    help='Decay step for lr decay [default: 200000]')
+parser.add_argument('--decay_rate', type=float, default=0.7,
+                    help='Decay rate for lr decay [default: 0.7]')
 parser.add_argument('--disable_jittering', type=bool, default=False,
                     help='Whether or not to disable jittering [default: false]')
-parser.add_argument('--param_to_test', type=str, default='max_epoch', help='Hyperparameter to test [default: max_epoch]')
-parser.add_argument('--cross_validation', type=bool, default=False, help='Wether or not to perform cross validation [default: False]')
+parser.add_argument('--param_to_test', type=str, default='max_epoch',
+                    help='Hyperparameter to test [default: max_epoch]')
+parser.add_argument('--cross_validation', type=bool, default=False,
+                    help='Wether or not to perform cross validation [default: False]')
 
 FLAGS = parser.parse_args()
 
@@ -58,12 +70,14 @@ CROSS_VALIDATION = FLAGS.cross_validation
 MODEL = importlib.import_module(FLAGS.model)  # import network module
 MODEL_FILE = os.path.join(ROOT_DIR, 'models', FLAGS.model + '.py')
 LOG_DIR = FLAGS.log_dir
-if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
+if not os.path.exists(LOG_DIR):
+    os.mkdir(LOG_DIR)
 os.system('cp %s %s' % (MODEL_FILE, LOG_DIR))  # bkp of model def
 os.system('cp train.py %s' % (LOG_DIR))  # bkp of train procedure
 LOG_FOUT = open(os.path.join(LOG_DIR, 'log_train.txt'), 'w')
 LOG_FOUT.write(str(FLAGS) + '\n')
-LOG_FOUT_CROSS = open(os.path.join(LOG_DIR, 'log_train_{}.txt'.format(PARAM_TO_TEST)), 'w')
+LOG_FOUT_CROSS = open(os.path.join(
+    LOG_DIR, 'log_train_{}.txt'.format(PARAM_TO_TEST)), 'w')
 LOG_FOUT_CROSS.write(str(FLAGS) + '\n')
 
 PARAM_TO_TEST = PARAM_TO_TEST.upper()
@@ -80,27 +94,29 @@ HOSTNAME = socket.gethostname()
 # TRAIN_DATASET = part_dataset_all_normal.PartNormalDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='trainval')
 # TEST_DATASET = part_dataset_all_normal.PartNormalDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='test')
 DATA_PATH = os.path.join(ROOT_DIR, 'data', 'hdf5_data')
-TRAIN_DATASET = face_dataset.FaceDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='train')
-TEST_DATASET = face_dataset.FaceDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='val')
+TRAIN_DATASET = face_dataset.FaceDataset(
+    root=DATA_PATH, npoints=NUM_POINT, classification=False, split='train')
+TEST_DATASET = face_dataset.FaceDataset(
+    root=DATA_PATH, npoints=NUM_POINT, classification=False, split='val')
 
 NUM_CLASSES = TRAIN_DATASET.n_classes
+
 
 def get_execution_time(start):
     part = time.time()
     hours, rem = divmod(part-start, 3600)
     minutes, seconds = divmod(rem, 60)
-    duration = '{:0>2}:{:0>2}:{:05.2f}\n'.format(int(hours),int(minutes),seconds)
+    duration = '{:0>2}:{:0>2}:{:05.2f}\n'.format(
+        int(hours), int(minutes), seconds)
     print(duration)
     return duration
 
-def has_shape_six(datum, tensor):
-    shape = np.shape(tensor)
-    return len(shape) == 3
 
-
-def log_string(out_str, file=LOG_FOUT):
-    file.write(out_str + '\n')
-    file.flush()
+def log_string(out_str, stream=None):
+    if stream is None:
+        stream = LOG_FOUT
+    stream.write(out_str + '\n')
+    stream.flush()
     print(out_str)
 
 
@@ -111,7 +127,8 @@ def get_learning_rate(batch):
         DECAY_STEP,  # Decay step.
         DECAY_RATE,  # Decay rate.
         staircase=True)
-    learning_rate = tf.maximum(learning_rate, 0.00001)  # CLIP THE LEARNING RATE!
+    # CLIP THE LEARNING RATE!
+    learning_rate = tf.maximum(learning_rate, 0.00001)
     return learning_rate
 
 
@@ -129,23 +146,26 @@ def get_bn_decay(batch):
 def train():
     with tf.Graph().as_default():
         with tf.device('/gpu:' + str(GPU_INDEX)):
-            pointclouds_pl, labels_pl = MODEL.placeholder_inputs(BATCH_SIZE, NUM_POINT)
+            pointclouds_pl, labels_pl = MODEL.placeholder_inputs(
+                BATCH_SIZE, NUM_POINT)
             is_training_pl = tf.placeholder(tf.bool, shape=())
 
-            # Note the global_step=batch parameter to minimize. 
+            # Note the global_step=batch parameter to minimize.
             # That tells the optimizer to helpfully increment the 'batch' parameter for you every time it trains.
             batch = tf.Variable(0)
             bn_decay = get_bn_decay(batch)
             tf.summary.scalar('bn_decay', bn_decay)
 
             print("--- Get model and loss")
-            # Get model and loss 
-            pred, end_points = MODEL.get_model(pointclouds_pl, is_training_pl, bn_decay=bn_decay)
+            # Get model and loss
+            pred, end_points = MODEL.get_model(
+                pointclouds_pl, is_training_pl, bn_decay=bn_decay)
             loss = MODEL.get_loss(pred, labels_pl)
             tf.summary.scalar('loss', loss)
 
             correct = tf.equal(tf.argmax(pred, 2), tf.to_int64(labels_pl))
-            accuracy = tf.reduce_sum(tf.cast(correct, tf.float32)) / float(BATCH_SIZE * NUM_POINT)
+            accuracy = tf.reduce_sum(
+                tf.cast(correct, tf.float32)) / float(BATCH_SIZE * NUM_POINT)
             tf.summary.scalar('accuracy', accuracy)
 
             print("--- Get training operator")
@@ -153,7 +173,8 @@ def train():
             learning_rate = get_learning_rate(batch)
             tf.summary.scalar('learning_rate', learning_rate)
             if OPTIMIZER == 'momentum':
-                optimizer = tf.train.MomentumOptimizer(learning_rate, momentum=MOMENTUM)
+                optimizer = tf.train.MomentumOptimizer(
+                    learning_rate, momentum=MOMENTUM)
             elif OPTIMIZER == 'adam':
                 optimizer = tf.train.AdamOptimizer(learning_rate)
             train_op = optimizer.minimize(loss, global_step=batch)
@@ -172,8 +193,10 @@ def train():
 
         # Add summary writers
         merged = tf.summary.merge_all()
-        train_writer = tf.summary.FileWriter(os.path.join(LOG_DIR, 'train'), sess.graph)
-        test_writer = tf.summary.FileWriter(os.path.join(LOG_DIR, 'test'), sess.graph)
+        train_writer = tf.summary.FileWriter(
+            os.path.join(LOG_DIR, 'train'), sess.graph)
+        test_writer = tf.summary.FileWriter(
+            os.path.join(LOG_DIR, 'test'), sess.graph)
 
         # Init variables
         init = tf.global_variables_initializer()
@@ -199,9 +222,11 @@ def train():
 
             # Save the variables to disk.
             if epoch % 10 == 0:
-                save_path = saver.save(sess, os.path.join(LOG_DIR, "model.ckpt"))
+                save_path = saver.save(
+                    sess, os.path.join(LOG_DIR, "model.ckpt"))
                 log_string("Model saved in file: %s" % save_path)
     return acc, iou, class_acc
+
 
 def get_batch(dataset, idxs, start_idx, end_idx):
     bsize = end_idx - start_idx
@@ -233,7 +258,8 @@ def train_one_epoch(sess, ops, train_writer):
     for batch_idx in range(num_batches):
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx + 1) * BATCH_SIZE
-        batch_data, batch_label = get_batch(TRAIN_DATASET, train_idxs, start_idx, end_idx)
+        batch_data, batch_label = get_batch(
+            TRAIN_DATASET, train_idxs, start_idx, end_idx)
         # Augment batched point clouds by rotation and jittering
         # aug_data = batch_data
         # aug_data = provider.random_scale_point_cloud(batch_data)
@@ -293,7 +319,8 @@ def eval_one_epoch(sess, ops, test_writer):
         start_idx = batch_idx * BATCH_SIZE
         end_idx = min(len(TEST_DATASET), (batch_idx + 1) * BATCH_SIZE)
         cur_batch_size = end_idx - start_idx
-        cur_batch_data, cur_batch_label = get_batch(TEST_DATASET, test_idxs, start_idx, end_idx)
+        cur_batch_data, cur_batch_label = get_batch(
+            TEST_DATASET, test_idxs, start_idx, end_idx)
         if cur_batch_size == BATCH_SIZE:
             batch_data = cur_batch_data
             batch_label = cur_batch_label
@@ -318,7 +345,8 @@ def eval_one_epoch(sess, ops, test_writer):
         for i in range(cur_batch_size):
             cat = seg_label_to_cat[cur_batch_label[i, 0]]
             logits = cur_pred_val_logits[i, :, :]
-            cur_pred_val[i, :] = np.argmax(logits[:, seg_classes[cat]], 1) + seg_classes[cat][0]
+            cur_pred_val[i, :] = np.argmax(
+                logits[:, seg_classes[cat]], 1) + seg_classes[cat][0]
         correct = np.sum(cur_pred_val == cur_batch_label)
         total_correct += correct
         total_seen += (cur_batch_size * NUM_POINT)
@@ -326,7 +354,8 @@ def eval_one_epoch(sess, ops, test_writer):
             loss_sum += loss_val
         for l in range(NUM_CLASSES):
             total_seen_class[l] += np.sum(cur_batch_label == l)
-            total_correct_class[l] += (np.sum((cur_pred_val == l) & (cur_batch_label == l)))
+            total_correct_class[l] += (np.sum((cur_pred_val == l)
+                                              & (cur_batch_label == l)))
 
         for i in range(cur_batch_size):
             segp = cur_pred_val[i, :]
@@ -334,7 +363,8 @@ def eval_one_epoch(sess, ops, test_writer):
             cat = seg_label_to_cat[segl[0]]
             part_ious = [0.0 for _ in range(len(seg_classes[cat]))]
             for l in seg_classes[cat]:
-                if (np.sum(segl == l) == 0) and (np.sum(segp == l) == 0):  # part is not present, no prediction as well
+                # part is not present, no prediction as well
+                if (np.sum(segl == l) == 0) and (np.sum(segp == l) == 0):
                     part_ious[l - seg_classes[cat][0]] = 1.0
                 else:
                     part_ious[l - seg_classes[cat][0]] = np.sum((segl == l) & (segp == l)) / float(
@@ -347,7 +377,8 @@ def eval_one_epoch(sess, ops, test_writer):
             all_shape_ious.append(iou)
         shape_ious[cat] = np.mean(shape_ious[cat])
     mean_shape_ious = np.mean(shape_ious.values())
-    log_string('eval mean loss: %f' % (loss_sum / float(len(TEST_DATASET) / BATCH_SIZE)))
+    log_string('eval mean loss: %f' %
+               (loss_sum / float(len(TEST_DATASET) / BATCH_SIZE)))
     log_string('eval accuracy: %f' % (total_correct / float(total_seen)))
     log_string('eval avg class acc: %f' % (
         np.mean(np.array(total_correct_class) / np.array(total_seen_class, dtype=np.float))))
@@ -362,28 +393,34 @@ def eval_one_epoch(sess, ops, test_writer):
 
 if __name__ == "__main__":
     log_string('pid: %s' % (str(os.getpid())))
-    
+
     DATA_PATH = os.path.join(ROOT_DIR, 'data', 'DownSampledDatasetCrossVal')
-    
+    DATA_PATHS = ['hdf5_data_2048_pts_cross_val',
+                  'hdf5_data_4096_pts_cross_val', 'hdf5_data_8192_pts_cross_val']
 
     hyperparameters = {'BATCH_SIZE': [32, 60, 15],
-                       'NUM_POINT': [2048, 6000, 12000], 
-                       'MAX_EPOCH': [101, 201, 301], 
-    	               'BASE_LEARNING_RATE': [0.0001, 0.001, 0.01], 
-                       'MOMENTUM': [0.3, 0.9, 1.8], 
-                       'OPTIMIZER': ['adam', 'momentum'], 
-                       'DECAY_STEP': [100000, 200000], 
-                       'DECAY_RATE': [0.7, 1.4], 
+                       'NUM_POINT': [2048, 4096, 8192],
+                       'MAX_EPOCH': [101, 201, 301, 401],
+                       'BASE_LEARNING_RATE': [0.0001, 0.001, 0.01],
+                       'MOMENTUM': [0.3, 0.9, 1.8],
+                       'OPTIMIZER': ['adam', 'momentum'],
+                       'DECAY_STEP': [100000, 200000, 300000],
+                       'DECAY_RATE': [0.35, 0.7, 1.4],
                        'DISABLE_JITTERING': [False, True]}
-    
-    log_string('>>Testing {} with values: {}'.format(PARAM_TO_TEST, hyperparameters[PARAM_TO_TEST]), LOG_FOUT_CROSS)
 
-    for param in tqdm(hyperparameters[PARAM_TO_TEST]):
+    log_string('>>Testing {} with values: {}'.format(
+        PARAM_TO_TEST, hyperparameters[PARAM_TO_TEST]), LOG_FOUT_CROSS)
+
+    for idx, param in tqdm(enumerate(hyperparameters[PARAM_TO_TEST])):
         start = time.time()
-        log_string('>>Testing {}: {}'.format(PARAM_TO_TEST, param), LOG_FOUT_CROSS)
-        #Change value of the hyperparameter to be tested
+        log_string('>>Testing {}: {}'.format(
+            PARAM_TO_TEST, param), LOG_FOUT_CROSS)
+        # Change value of the hyperparameter to be tested
         exec('{} = param'.format(PARAM_TO_TEST))
-        
+        if PARAM_TO_TEST == 'NUM_POINT':
+            print("PARAM IS NUM_POINT")
+            DATA_PATH = os.path.join(ROOT_DIR, 'data', DATA_PATHS[idx])
+            log_string('path: {}'.format(DATA_PATH), LOG_FOUT_CROSS)
         if CROSS_VALIDATION:
             print('>>Performing cross validation')
             acc_avg = []
@@ -392,8 +429,10 @@ if __name__ == "__main__":
             for i in tqdm(range(4)):
                 print('>>Iteration: {}'.format(i+1))
                 EPOCH_CNT = 0
-                TRAIN_DATASET = face_dataset.FaceDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='train', return_normals=True, file_index=i)
-                TEST_DATASET = face_dataset.FaceDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='val', return_normals=True, file_index=i)
+                TRAIN_DATASET = face_dataset.FaceDataset(
+                    root=DATA_PATH, npoints=NUM_POINT, classification=False, split='train', return_normals=True, file_index=i)
+                TEST_DATASET = face_dataset.FaceDataset(
+                    root=DATA_PATH, npoints=NUM_POINT, classification=False, split='val', return_normals=True, file_index=i)
 
                 NUM_CLASSES = TRAIN_DATASET.n_classes
 
@@ -401,15 +440,19 @@ if __name__ == "__main__":
                 acc_avg.append(acc)
                 iou_avg.append(iou)
                 class_acc_avg.append(class_acc)
-            log_string('acc: {}: {}'.format(np.mean(acc_avg), str(acc_avg)), LOG_FOUT_CROSS)
-            log_string('class acc: {}: {}'.format(np.mean(class_acc_avg), str(class_acc_avg)), LOG_FOUT_CROSS)
-            log_string('iou: {}: {}'.format(np.mean(iou_avg), str(iou_avg)), LOG_FOUT_CROSS)
+            log_string('acc: {}: {}'.format(
+                np.mean(acc_avg), str(acc_avg)), LOG_FOUT_CROSS)
+            log_string('class acc: {}: {}'.format(
+                np.mean(class_acc_avg), str(class_acc_avg)), LOG_FOUT_CROSS)
+            log_string('iou: {}: {}'.format(
+                np.mean(iou_avg), str(iou_avg)), LOG_FOUT_CROSS)
         else:
             acc, iou, class_acc = train()
             log_string('acc: {}'.format(acc), LOG_FOUT_CROSS)
             log_string('class acc: {}'.format(class_acc), LOG_FOUT_CROSS)
             log_string('iou: {}'.format(iou), LOG_FOUT_CROSS)
 
-        log_string('Execution duration: {}'.format(get_execution_time(start)), LOG_FOUT_CROSS) 
+        log_string('Execution duration: {}'.format(
+            get_execution_time(start)), LOG_FOUT_CROSS)
 
     LOG_FOUT.close()
