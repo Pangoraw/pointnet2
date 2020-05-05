@@ -24,6 +24,7 @@ class FaceDataset():
 
         self.classification = classification
         self.return_cls_label = return_cls_label
+        self.return_normals = return_normals
 
         with open(self.catfile, 'r') as f:
             for line in f:
@@ -37,24 +38,31 @@ class FaceDataset():
         samples = store['data'].value
         labels = store['label'].value
         segs = store['pid'].value
+        if return_normals:
+            self.normals = store['normal']
 
         self.samples = samples
         self.labels = labels
         self.segs = segs
+
         classes = np.unique(segs.reshape(-1,))
         self.seg_classes = {0: classes}
         self.n_classes = classes.shape[0]
         self.classes = {0: 'face'}
 
-
     def __getitem__(self, index):
         if self.classification:
             return self.samples[index], self.labels[index]
         elif self.return_cls_label:
-            return self.samples[index], self.segs[index], self.labels[index]
-	else:
-            return self.samples[index], self.segs[index]
-
+            if self.return_normals:
+                return self.samples[index], self.normals[index], self.segs[index], self.labels[index]
+            else:
+                return self.samples[index], self.segs[index], self.labels[index]
+        else:
+            if self.return_normals:
+                return self.samples[index], self.normals[index], self.segs[index]
+            else:
+                return self.samples[index], self.segs[index]
 
     def __len__(self):
         return self.samples.shape[0]
