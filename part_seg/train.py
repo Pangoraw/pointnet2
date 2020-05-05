@@ -93,9 +93,11 @@ def get_execution_time(start):
     print(duration)
     return duration
 
-def log_string(out_str):
-    LOG_FOUT.write(out_str + '\n')
-    LOG_FOUT.flush()
+def log_string(out_str, stream=None):
+    if stream is None:
+	stream = LOG_FOUT
+    stream.write(out_str + '\n')
+    stream.flush()
     print(out_str)
 
 
@@ -358,26 +360,29 @@ if __name__ == "__main__":
     log_string('pid: %s' % (str(os.getpid())))
     
     DATA_PATH = os.path.join(ROOT_DIR, 'data', 'DownSampledDatasetCrossVal')
-    
+    DATA_PATHS = ['hdf5_data_2048_pts_cross_val', 'hdf5_data_4096_pts_cross_val', 'hdf5_data_8192_pts_cross_val']     
 
     hyperparameters = {'BATCH_SIZE': [32, 60, 15],
-                       'NUM_POINT': [2048, 6000, 12000], 
-                       'MAX_EPOCH': [101, 201, 301], 
+                       'NUM_POINT': [2048, 4096, 8192], 
+                       'MAX_EPOCH': [101, 201, 301, 401], 
     	               'BASE_LEARNING_RATE': [0.0001, 0.001, 0.01], 
                        'MOMENTUM': [0.3, 0.9, 1.8], 
                        'OPTIMIZER': ['adam', 'momentum'], 
-                       'DECAY_STEP': [100000, 200000], 
-                       'DECAY_RATE': [0.7, 1.4], 
+                       'DECAY_STEP': [100000, 200000, 300000], 
+                       'DECAY_RATE': [0.35, 0.7, 1.4], 
                        'DISABLE_JITTERING': [False, True]}
     
     log_string('>>Testing {} with values: {}'.format(PARAM_TO_TEST, hyperparameters[PARAM_TO_TEST]), LOG_FOUT_CROSS)
 
-    for param in tqdm(hyperparameters[PARAM_TO_TEST]):
+    for idx, param in tqdm(enumerate(hyperparameters[PARAM_TO_TEST])):
         start = time.time()
         log_string('>>Testing {}: {}'.format(PARAM_TO_TEST, param), LOG_FOUT_CROSS)
         #Change value of the hyperparameter to be tested
         exec('{} = param'.format(PARAM_TO_TEST))
-        
+        if PARAM_TO_TEST == 'NUM_POINT': 
+            print("PARAM IS NUM_POINT")
+            DATA_PATH = os.path.join(ROOT_DIR, 'data', DATA_PATHS[idx])
+            log_string('path: {}'.format(DATA_PATH), LOG_FOUT_CROSS)	
         if CROSS_VALIDATION:
             print('>>Performing cross validation')
             acc_avg = []
