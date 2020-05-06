@@ -404,6 +404,10 @@ if __name__ == "__main__":
             log_string('class acc: {}: {}'.format(np.mean(class_acc_avg), str(class_acc_avg)), LOG_FOUT_CROSS)
             log_string('iou: {}: {}'.format(np.mean(iou_avg), str(iou_avg)), LOG_FOUT_CROSS)
         else:
+            TRAIN_DATASET = face_dataset.FaceDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='train', return_normals=False, file_index=i)
+            TEST_DATASET = face_dataset.FaceDataset(root=DATA_PATH, npoints=NUM_POINT, classification=False, split='val', return_normals=False, file_index=i)
+            NUM_CLASSES = TRAIN_DATASET.n_classes
+
             acc, iou, class_acc = train()
             log_string('acc: {}'.format(acc), LOG_FOUT_CROSS)
             log_string('class acc: {}'.format(class_acc), LOG_FOUT_CROSS)
