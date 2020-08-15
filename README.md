@@ -1,3 +1,8 @@
+##### Note:
+
+This repository is a fork of PointNet++ created for a project on human face segmentation.
+The main changes made are related to segmentation model including making the `test.py` file work with xyz data (without normals) and working with a dataset other than ShapeNet.
+
 ### PointNet++: *Deep Hierarchical Feature Learning on Point Sets in a Metric Space*
 Created by <a href="http://charlesrqi.com" target="_blank">Charles R. Qi</a>, <a href="http://stanford.edu/~ericyi">Li (Eric) Yi</a>, <a href="http://ai.stanford.edu/~haosu/" target="_blank">Hao Su</a>, <a href="http://geometry.stanford.edu/member/guibas/" target="_blank">Leonidas J. Guibas</a> from Stanford University.
 
